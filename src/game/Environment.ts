@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Road } from './Road';
 
 const TREE_COUNT = 80;
 const POLE_COUNT = 30;
@@ -11,6 +12,8 @@ export class Environment {
   readonly group: THREE.Group;
   private trees: THREE.Mesh[] = [];
   private poles: THREE.Mesh[] = [];
+  private treeSides: number[] = [];
+  private poleSides: number[] = [];
   private totalMoved = 0;
 
   constructor(scene: THREE.Scene) {
@@ -105,8 +108,9 @@ export class Environment {
       tree.add(leaves);
 
       const side = Math.random() > 0.5 ? 1 : -1;
+      const sideDistance = SIDE_MIN + Math.random() * SIDE_MAX;
       tree.position.set(
-        side * (SIDE_MIN + Math.random() * SIDE_MAX),
+        side * sideDistance,
         0,
         -Math.random() * OBJECT_SPREAD,
       );
@@ -114,6 +118,7 @@ export class Environment {
 
       const mesh = tree as unknown as THREE.Mesh;
       this.trees.push(mesh);
+      this.treeSides.push(side * sideDistance);
       this.group.add(tree);
     }
   }
@@ -143,8 +148,9 @@ export class Environment {
       poleGroup.add(lampLight);
 
       const side = i % 2 === 0 ? -1 : 1;
+      const sideDistance = ROAD_HALF_WIDTH + 4;
       poleGroup.position.set(
-        side * (ROAD_HALF_WIDTH + 4),
+        side * sideDistance,
         0,
         -i * (OBJECT_SPREAD / POLE_COUNT),
       );
@@ -154,28 +160,36 @@ export class Environment {
 
       const mesh = poleGroup as unknown as THREE.Mesh;
       this.poles.push(mesh);
+      this.poleSides.push(side * sideDistance);
       this.group.add(poleGroup);
     }
   }
 
-  update(dt: number, speed: number): void {
+  update(dt: number, speed: number, road?: Road): void {
     const move = speed * dt;
     this.totalMoved += move;
 
-    for (const tree of this.trees) {
+    for (let i = 0; i < this.trees.length; i++) {
+      const tree = this.trees[i];
       tree.position.z += move;
       if (tree.position.z > 50) {
         tree.position.z -= OBJECT_SPREAD + 50;
         const side = Math.random() > 0.5 ? 1 : -1;
-        tree.position.x = side * (SIDE_MIN + Math.random() * SIDE_MAX);
+        const sideDistance = SIDE_MIN + Math.random() * SIDE_MAX;
+        this.treeSides[i] = side * sideDistance;
       }
+      const curveX = road ? road.getCurveOffset(tree.position.z) : 0;
+      tree.position.x = this.treeSides[i] + curveX;
     }
 
-    for (const pole of this.poles) {
+    for (let i = 0; i < this.poles.length; i++) {
+      const pole = this.poles[i];
       pole.position.z += move;
       if (pole.position.z > 50) {
         pole.position.z -= OBJECT_SPREAD + 50;
       }
+      const curveX = road ? road.getCurveOffset(pole.position.z) : 0;
+      pole.position.x = this.poleSides[i] + curveX;
     }
   }
 }

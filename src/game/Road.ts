@@ -8,6 +8,21 @@ const LANE_WIDTH = ROAD_WIDTH / LANE_COUNT;
 const DASH_LENGTH = 3;
 const DASH_GAP = 3;
 
+export function computeCurve(curvePhase: number, totalDistance: number, z: number): number {
+  const d = -z + totalDistance;
+  return Math.sin(curvePhase + d * 0.004) * 10 +
+    Math.sin(curvePhase * 1.3 + d * 0.002) * 5 +
+    Math.sin(curvePhase * 0.7 + d * 0.008) * 4 +
+    Math.sin(curvePhase * 2.1 + d * 0.001) * 3;
+}
+
+export function computeCurveSlope(curvePhase: number, totalDistance: number, z: number): number {
+  const epsilon = 0.5;
+  const ahead = computeCurve(curvePhase, totalDistance, z - epsilon);
+  const behind = computeCurve(curvePhase, totalDistance, z + epsilon);
+  return (ahead - behind) / (2 * epsilon);
+}
+
 export class Road {
   readonly group: THREE.Group;
   private totalDistance = 0;
@@ -98,16 +113,24 @@ export class Road {
 
       const z = this.segmentBaseZ[i];
       const curve = this.getCurveAt(z);
+      const slope = computeCurveSlope(this.curvePhase, this.totalDistance, z);
 
       this.segmentGroups[i].position.z = z;
       this.segmentGroups[i].position.x = curve;
+      this.segmentGroups[i].rotation.y = -Math.atan(slope) * 0.8;
     }
   }
 
   getCurveAt(z: number): number {
-    const d = -z + this.totalDistance;
-    return Math.sin(this.curvePhase + d * 0.004) * 6 +
-      Math.sin(this.curvePhase * 1.3 + d * 0.002) * 3;
+    return computeCurve(this.curvePhase, this.totalDistance, z);
+  }
+
+  getCurveOffset(z: number): number {
+    return this.getCurveAt(z);
+  }
+
+  getCurveSlope(z: number = 0): number {
+    return computeCurveSlope(this.curvePhase, this.totalDistance, z);
   }
 
   getCurveAhead(): number {
@@ -115,6 +138,14 @@ export class Road {
   }
 
   get distance(): number {
+    return this.totalDistance;
+  }
+
+  get phase(): number {
+    return this.curvePhase;
+  }
+
+  get dist(): number {
     return this.totalDistance;
   }
 }

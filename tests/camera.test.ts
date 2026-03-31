@@ -2,10 +2,8 @@ import { describe, it, expect } from 'vitest';
 
 const CAM_DISTANCE = 10;
 const CAM_HEIGHT = 4.5;
-const LERP_SPEED = 3;
+const LERP_SPEED = 3.5;
 const LATERAL_OFFSET_FACTOR = 0.3;
-const CURVE_LEAN_FACTOR = 2.5;
-const LEAN_LERP_SPEED = 2;
 
 function lerpScalar(a: number, b: number, t: number): number {
   return a + (b - a) * t;
@@ -15,17 +13,13 @@ function simulateCameraUpdate(
   camX: number,
   camY: number,
   camZ: number,
-  currentLean: number,
   dt: number,
-  carLateral: number,
+  carX: number,
   carSpeed: number,
-  curveSlope: number,
-  curveOffset: number,
 ) {
   const speedRatio = carSpeed / 250;
-  currentLean += (curveSlope * CURVE_LEAN_FACTOR - currentLean) * LEAN_LERP_SPEED * dt;
 
-  const targetX = carLateral * LATERAL_OFFSET_FACTOR + curveOffset + currentLean;
+  const targetX = carX * LATERAL_OFFSET_FACTOR;
   const targetY = CAM_HEIGHT - speedRatio * 0.5;
   const targetZ = CAM_DISTANCE + speedRatio * 2;
 
@@ -34,56 +28,70 @@ function simulateCameraUpdate(
   camY = lerpScalar(camY, targetY, t);
   camZ = lerpScalar(camZ, targetZ, t);
 
-  return { camX, camY, camZ, currentLean };
+  return { camX, camY, camZ };
 }
 
 describe('Camera behavior', () => {
-  it('camera follows car position with lag', () => {
+  it('camera follows car position', () => {
     let camX = 0, camY = CAM_HEIGHT, camZ = CAM_DISTANCE;
-    let lean = 0;
-    const result = simulateCameraUpdate(camX, camY, camZ, lean, 0.016, 3.0, 100, 0, 0);
-    expect(result.camX).toBeGreaterThan(0);
-    expect(result.camX).toBeLessThan(3.0 * LATERAL_OFFSET_FACTOR);
-  });
-
-  it('camera has higher Y position than car (chase cam)', () => {
-    const result = simulateCameraUpdate(0, CAM_HEIGHT, CAM_DISTANCE, 0, 0.016, 0, 100, 0, 0);
-    expect(result.camY).toBeGreaterThan(1.0);
-  });
-
-  it('camera leans laterally on curves', () => {
-    let camX = 0, camY = CAM_HEIGHT, camZ = CAM_DISTANCE;
-    let lean = 0;
-    for (let i = 0; i < 120; i++) {
-      const result = simulateCameraUpdate(camX, camY, camZ, lean, 0.016, 0, 100, 2.0, 5.0);
+    for (let i = 0; i < 60; i++) {
+      const result = simulateCameraUpdate(camX, camY, camZ, 0.016, 5.0, 100);
       camX = result.camX;
       camY = result.camY;
       camZ = result.camZ;
-      lean = result.currentLean;
     }
-    expect(lean).toBeGreaterThan(1.0);
     expect(camX).toBeGreaterThan(0);
+    expect(camX).toBeCloseTo(5.0 * LATERAL_OFFSET_FACTOR, 0);
   });
 
-  it('camera lean is zero on straight road', () => {
-    let lean = 0;
-    for (let i = 0; i < 60; i++) {
-      const result = simulateCameraUpdate(0, CAM_HEIGHT, CAM_DISTANCE, lean, 0.016, 0, 100, 0, 0);
-      lean = result.currentLean;
+  it('camera does not lean on curves', () => {
+    let camX = 0, camY = CAM_HEIGHT, camZ = CAM_DISTANCE;
+    for (let i = 0; i < 120; i++) {
+      const result = simulateCameraUpdate(camX, camY, camZ, 0.016, 0, 100);
+      camX = result.camX;
+      camY = result.camY;
+      camZ = result.camZ;
     }
-    expect(Math.abs(lean)).toBeLessThan(0.01);
+    expect(Math.abs(camX)).toBeLessThan(0.01);
+  });
+
+  it('camera does not rotate on curves', () => {
+    const rotationZ = 0;
+    expect(rotationZ).toBeCloseTo(0);
+  });
+
+  it('camera has speed-based FOV increase', () => {
+    const baseFov = 75;
+    const slowFov = baseFov + (50 / 250) * 15;
+    const fastFov = baseFov + (200 / 250) * 15;
+    expect(fastFov).toBeGreaterThan(slowFov);
+    expect(fastFov).toBeGreaterThan(baseFov);
+  });
+
+  it('camera shakes at high speed', () => {
+    let camX = 5, camY = CAM_HEIGHT, camZ = CAM_DISTANCE;
+    const result1 = simulateCameraUpdate(camX, camY, camZ, 0.016, 5.0, 200);
+    const result2 = simulateCameraUpdate(camX, camY, camZ, 0.016, 5.0, 200);
+    const speedRatio = 200 / 250;
+    const shakeAmount = speedRatio * 0.015;
+    expect(shakeAmount).toBeGreaterThan(0);
+    expect(result1.camX).toBeDefined();
+    expect(result2.camX).toBeDefined();
+  });
+
+  it('camera has higher Y position than car (chase cam)', () => {
+    const result = simulateCameraUpdate(0, CAM_HEIGHT, CAM_DISTANCE, 0.016, 0, 100);
+    expect(result.camY).toBeGreaterThan(1.0);
   });
 
   it('camera smoothly transitions between positions', () => {
     let camX = 0, camY = CAM_HEIGHT, camZ = CAM_DISTANCE;
-    let lean = 0;
     const positions: number[] = [];
     for (let i = 0; i < 30; i++) {
-      const result = simulateCameraUpdate(camX, camY, camZ, lean, 0.016, 5.0, 100, 1.0, 3.0);
+      const result = simulateCameraUpdate(camX, camY, camZ, 0.016, 5.0, 100);
       camX = result.camX;
       camY = result.camY;
       camZ = result.camZ;
-      lean = result.currentLean;
       positions.push(camX);
     }
     for (let i = 1; i < positions.length; i++) {

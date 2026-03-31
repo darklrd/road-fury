@@ -10,6 +10,9 @@ const STEER_SPEED = 3.5;
 const MAX_STEER_ANGLE = 0.04;
 const ROAD_HALF_WIDTH = 5.5;
 const TILT_AMOUNT = 0.08;
+const DRIFT_FACTOR = 0.18;
+const OFF_ROAD_DECEL = 0.96;
+const MAX_LANE_OFFSET = ROAD_HALF_WIDTH + 2;
 
 export class PlayerCar {
   readonly group: THREE.Group;
@@ -17,7 +20,7 @@ export class PlayerCar {
   lateralPosition = 0;
   private steerAngle = 0;
   private readonly bodyMesh: THREE.Mesh;
-  private laneOffset = 0;
+  laneOffset = 0;
 
   constructor() {
     this.group = new THREE.Group();
@@ -97,14 +100,21 @@ export class PlayerCar {
     this.steerAngle = Math.max(-MAX_STEER_ANGLE, Math.min(MAX_STEER_ANGLE, this.steerAngle));
 
     this.laneOffset += this.steerAngle * this.speed * dt;
-    this.laneOffset = Math.max(-ROAD_HALF_WIDTH, Math.min(ROAD_HALF_WIDTH, this.laneOffset));
+
+    const curveSlope = road ? road.getCurveSlope(0) : 0;
+    this.laneOffset += curveSlope * this.speed * DRIFT_FACTOR * dt;
+
+    if (Math.abs(this.laneOffset) > ROAD_HALF_WIDTH) {
+      this.speed *= OFF_ROAD_DECEL;
+    }
+
+    this.laneOffset = Math.max(-MAX_LANE_OFFSET, Math.min(MAX_LANE_OFFSET, this.laneOffset));
 
     const curveOffset = road ? road.getCurveOffset(0) : 0;
     this.lateralPosition = this.laneOffset + curveOffset;
 
     this.group.position.x = this.lateralPosition;
 
-    const curveSlope = road ? road.getCurveSlope(0) : 0;
     this.group.rotation.z = -this.steerAngle * TILT_AMOUNT * this.speed;
     this.group.rotation.y = -this.steerAngle * 0.5 - Math.atan(curveSlope) * 0.3;
 

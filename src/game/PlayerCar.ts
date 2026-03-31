@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Input } from './Input';
+import { Road } from './Road';
 
 const ACCELERATION = 30;
 const BRAKE_FORCE = 40;
@@ -16,6 +17,7 @@ export class PlayerCar {
   lateralPosition = 0;
   private steerAngle = 0;
   private readonly bodyMesh: THREE.Mesh;
+  private laneOffset = 0;
 
   constructor() {
     this.group = new THREE.Group();
@@ -71,7 +73,7 @@ export class PlayerCar {
     this.group.position.y = 0;
   }
 
-  update(dt: number, input: Input): void {
+  update(dt: number, input: Input, road?: Road): void {
     if (input.accelerate) {
       this.speed += ACCELERATION * dt;
     } else if (input.brake) {
@@ -94,12 +96,17 @@ export class PlayerCar {
 
     this.steerAngle = Math.max(-MAX_STEER_ANGLE, Math.min(MAX_STEER_ANGLE, this.steerAngle));
 
-    this.lateralPosition += this.steerAngle * this.speed * dt;
-    this.lateralPosition = Math.max(-ROAD_HALF_WIDTH, Math.min(ROAD_HALF_WIDTH, this.lateralPosition));
+    this.laneOffset += this.steerAngle * this.speed * dt;
+    this.laneOffset = Math.max(-ROAD_HALF_WIDTH, Math.min(ROAD_HALF_WIDTH, this.laneOffset));
+
+    const curveOffset = road ? road.getCurveOffset(0) : 0;
+    this.lateralPosition = this.laneOffset + curveOffset;
 
     this.group.position.x = this.lateralPosition;
+
+    const curveSlope = road ? road.getCurveSlope(0) : 0;
     this.group.rotation.z = -this.steerAngle * TILT_AMOUNT * this.speed;
-    this.group.rotation.y = -this.steerAngle * 0.5;
+    this.group.rotation.y = -this.steerAngle * 0.5 - Math.atan(curveSlope) * 0.3;
 
     this.bodyMesh.position.y = 0.5 + Math.sin(Date.now() * 0.01 * speedFactor) * 0.01 * speedFactor;
   }

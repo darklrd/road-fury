@@ -76,7 +76,7 @@ export class Game {
     this.road.update(dt, this.car.speed);
     this.env.update(dt, this.car.speed, this.road);
     this.cam.update(dt, this.car);
-    this.hud.update(this.car.speedKmh, this.car.gear, MAX_SPEED_KMH);
+    this.hud.update(this.car.speedKmh, this.car.gear, MAX_SPEED_KMH, this.car.offRoad);
 
     this.renderer.render(this.scene, this.cam.camera);
   };

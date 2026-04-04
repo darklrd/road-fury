@@ -3,7 +3,6 @@ import { describe, it, expect } from 'vitest';
 const CAM_DISTANCE = 10;
 const CAM_HEIGHT = 4.5;
 const LERP_SPEED = 3.5;
-const LATERAL_OFFSET_FACTOR = 0.3;
 
 function lerpScalar(a: number, b: number, t: number): number {
   return a + (b - a) * t;
@@ -19,7 +18,7 @@ function simulateCameraUpdate(
 ) {
   const speedRatio = carSpeed / 250;
 
-  const targetX = carX * LATERAL_OFFSET_FACTOR;
+  const targetX = carX;
   const targetY = CAM_HEIGHT - speedRatio * 0.5;
   const targetZ = CAM_DISTANCE + speedRatio * 2;
 
@@ -32,7 +31,7 @@ function simulateCameraUpdate(
 }
 
 describe('Camera behavior', () => {
-  it('camera follows car position', () => {
+  it('camera follows car position at 100%', () => {
     let camX = 0, camY = CAM_HEIGHT, camZ = CAM_DISTANCE;
     for (let i = 0; i < 60; i++) {
       const result = simulateCameraUpdate(camX, camY, camZ, 0.016, 5.0, 100);
@@ -41,7 +40,18 @@ describe('Camera behavior', () => {
       camZ = result.camZ;
     }
     expect(camX).toBeGreaterThan(0);
-    expect(camX).toBeCloseTo(5.0 * LATERAL_OFFSET_FACTOR, 0);
+    expect(camX).toBeCloseTo(5.0, 0);
+  });
+
+  it('camera lookAt follows car X', () => {
+    const carX = 12.0;
+    const speedRatio = 100 / 250;
+    const lookX = carX;
+    const lookY = 1;
+    const lookZ = -15 - speedRatio * 10;
+    expect(lookX).toBe(carX);
+    expect(lookY).toBe(1);
+    expect(lookZ).toBeLessThan(0);
   });
 
   it('camera does not lean on curves', () => {

@@ -6,11 +6,11 @@ const ACCELERATION = 30;
 const BRAKE_FORCE = 40;
 const MAX_SPEED = 250;
 const FRICTION = 5;
-const STEER_SPEED = 3.5;
-const MAX_STEER_ANGLE = 0.04;
+const STEER_SPEED = 5.0;
+const MAX_STEER_ANGLE = 0.08;
 const ROAD_HALF_WIDTH = 5.5;
 const TILT_AMOUNT = 0.08;
-const DRIFT_FACTOR = 0.18;
+const DRIFT_FACTOR = 0.12;
 const OFF_ROAD_DECEL = 0.96;
 const MAX_LANE_OFFSET = ROAD_HALF_WIDTH + 2;
 
@@ -18,6 +18,7 @@ export class PlayerCar {
   readonly group: THREE.Group;
   speed = 0;
   lateralPosition = 0;
+  offRoad = false;
   private steerAngle = 0;
   private readonly bodyMesh: THREE.Mesh;
   laneOffset = 0;
@@ -104,7 +105,9 @@ export class PlayerCar {
     const curveSlope = road ? road.getCurveSlope(0) : 0;
     this.laneOffset += curveSlope * this.speed * DRIFT_FACTOR * dt;
 
-    if (Math.abs(this.laneOffset) > ROAD_HALF_WIDTH) {
+    this.offRoad = Math.abs(this.laneOffset) > ROAD_HALF_WIDTH;
+
+    if (this.offRoad) {
       this.speed *= OFF_ROAD_DECEL;
     }
 

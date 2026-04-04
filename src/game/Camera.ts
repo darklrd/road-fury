@@ -4,7 +4,7 @@ import { PlayerCar } from './PlayerCar';
 const CAM_DISTANCE = 10;
 const CAM_HEIGHT = 4.5;
 const LERP_SPEED = 3.5;
-const LATERAL_OFFSET_FACTOR = 0.3;
+
 const SHAKE_INTENSITY = 0.015;
 
 export class Camera {
@@ -26,7 +26,7 @@ export class Camera {
     const speedRatio = car.speed / 250;
 
     this.targetPosition.set(
-      car.group.position.x * LATERAL_OFFSET_FACTOR,
+      car.group.position.x,
       CAM_HEIGHT - speedRatio * 0.5,
       CAM_DISTANCE + speedRatio * 2,
     );
@@ -40,7 +40,7 @@ export class Camera {
     }
 
     const lookTarget = new THREE.Vector3(
-      car.group.position.x * 0.5,
+      car.group.position.x,
       1,
       -15 - speedRatio * 10,
     );

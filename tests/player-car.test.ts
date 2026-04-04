@@ -4,10 +4,10 @@ const ACCELERATION = 30;
 const BRAKE_FORCE = 40;
 const MAX_SPEED = 250;
 const FRICTION = 5;
-const STEER_SPEED = 3.5;
-const MAX_STEER_ANGLE = 0.04;
+const STEER_SPEED = 5.0;
+const MAX_STEER_ANGLE = 0.08;
 const ROAD_HALF_WIDTH = 5.5;
-const DRIFT_FACTOR = 0.18;
+const DRIFT_FACTOR = 0.12;
 const OFF_ROAD_DECEL = 0.96;
 const MAX_LANE_OFFSET = ROAD_HALF_WIDTH + 2;
 
@@ -41,7 +41,9 @@ function simulateCarUpdate(
   laneOffset += steerAngle * speed * dt;
   laneOffset += curveSlope * speed * DRIFT_FACTOR * dt;
 
-  if (Math.abs(laneOffset) > ROAD_HALF_WIDTH) {
+  const offRoad = Math.abs(laneOffset) > ROAD_HALF_WIDTH;
+
+  if (offRoad) {
     speed *= OFF_ROAD_DECEL;
   }
 
@@ -49,7 +51,7 @@ function simulateCarUpdate(
 
   const lateralPosition = laneOffset + curveOffset;
 
-  return { speed, steerAngle, laneOffset, lateralPosition };
+  return { speed, steerAngle, laneOffset, lateralPosition, offRoad };
 }
 
 const noInput = { accelerate: false, brake: false, steerLeft: false, steerRight: false };
@@ -116,6 +118,28 @@ describe('PlayerCar physics', () => {
       speedB = b.speed; steerB = b.steerAngle; offsetB = b.laneOffset;
     }
     expect(Math.abs(offsetB)).toBeLessThan(Math.abs(offsetA));
+  });
+
+  it('steering significantly reduces drift on moderate curves', () => {
+    let speedA = 100, steerA = 0, offsetA = 0;
+    let speedB = 100, steerB = 0, offsetB = 0;
+    for (let i = 0; i < 30; i++) {
+      const a = simulateCarUpdate(speedA, steerA, offsetA, 0.016, { ...noInput, accelerate: true }, 0.5);
+      speedA = a.speed; steerA = a.steerAngle; offsetA = a.laneOffset;
+      const b = simulateCarUpdate(speedB, steerB, offsetB, 0.016, { ...noInput, accelerate: true, steerLeft: true }, 0.5);
+      speedB = b.speed; steerB = b.steerAngle; offsetB = b.laneOffset;
+    }
+    expect(offsetB).toBeLessThan(offsetA * 0.5);
+  });
+
+  it('offRoad is true when laneOffset exceeds road width', () => {
+    const result = simulateCarUpdate(100, 0, ROAD_HALF_WIDTH + 1, 0.016, noInput);
+    expect(result.offRoad).toBe(true);
+  });
+
+  it('offRoad is false when on road', () => {
+    const result = simulateCarUpdate(100, 0, 2.0, 0.016, noInput);
+    expect(result.offRoad).toBe(false);
   });
 
   it('car decelerates when off-road', () => {

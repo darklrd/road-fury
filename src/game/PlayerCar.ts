@@ -10,7 +10,7 @@ const STEER_SPEED = 5.0;
 const MAX_STEER_ANGLE = 0.08;
 const ROAD_HALF_WIDTH = 5.5;
 const TILT_AMOUNT = 0.08;
-const DRIFT_FACTOR = 0.12;
+
 const OFF_ROAD_DECEL = 0.96;
 const MAX_LANE_OFFSET = ROAD_HALF_WIDTH + 2;
 
@@ -102,9 +102,6 @@ export class PlayerCar {
 
     this.laneOffset += this.steerAngle * this.speed * dt;
 
-    const curveSlope = road ? road.getCurveSlope(0) : 0;
-    this.laneOffset += curveSlope * this.speed * DRIFT_FACTOR * dt;
-
     this.offRoad = Math.abs(this.laneOffset) > ROAD_HALF_WIDTH;
 
     if (this.offRoad) {
@@ -119,7 +116,7 @@ export class PlayerCar {
     this.group.position.x = this.lateralPosition;
 
     this.group.rotation.z = -this.steerAngle * TILT_AMOUNT * this.speed;
-    this.group.rotation.y = -this.steerAngle * 0.5 - Math.atan(curveSlope) * 0.3;
+    this.group.rotation.y = -this.steerAngle * 0.5;
 
     this.bodyMesh.position.y = 0.5 + Math.sin(Date.now() * 0.01 * speedFactor) * 0.01 * speedFactor;
   }
